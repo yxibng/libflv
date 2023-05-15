@@ -289,9 +289,16 @@ struct AVCVideoTagHeader: public VideoTagHeader
 };
 
 
+//ref to: https://blog.csdn.net/y_z_hyangmo/article/details/79208275
 struct AudioSpecificConfig
 {
-    /* data */
+    unsigned char profile : 5;
+    unsigned char sampleRateIndex : 4;
+    unsigned char channels : 4;
+    //CASpecificConfig
+    unsigned char frameLengthFlag : 1;
+    unsigned char dependsOnCoreCoder : 1;
+    unsigned char extentionFlag : 1;
 };
 
 
