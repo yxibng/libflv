@@ -12,7 +12,7 @@ enable_testing()
 
 
 
-add_executable(flv_app main.cpp libflv/flvmuxer.cpp)
+add_executable(flv_app main.cpp libflv/flvmuxer.cpp libflv/avc.cpp)
 
 target_include_directories(flv_app PUBLIC
                            "${CMAKE_CURRENT_LIST_DIR}/libflv"

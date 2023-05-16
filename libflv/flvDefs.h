@@ -1,13 +1,15 @@
 #ifndef __FLVDEFS_H__
 #define __FLVDEFS_H__
 
-#include <string.h>
-#include <stdint.h>
+#include <cstring>
+#include <cstdint>
+
 
 
 namespace nx
 {
 
+#pragma pack(1)
 struct FlvHeader
 {
     unsigned char signatureF = 'F';
@@ -292,19 +294,114 @@ struct AVCVideoTagHeader: public VideoTagHeader
 //ref to: https://blog.csdn.net/y_z_hyangmo/article/details/79208275
 struct AudioSpecificConfig
 {
+
+    /*
+    according to **aac-iso-13818-7**
+    AAC profile in adts header:
+    0 Main profile
+    1 Low Complexity profile (LC)
+    2 Scalable Sampling Rate profile (SSR)
+    3 (reserved)
+
+    AudioSpecificConfig.profile = adts.profile + 1
+    */
+    enum Profile {
+        AAC_Main = 1,
+        AAC_LC = 2,
+        AAC_SSR = 3,
+        AAC_LTP = 4,
+        AAC_Scalable = 6,
+        ER_AAC_LC  = 17,
+        ER_AAC_LTP = 19,
+        ER_AAC_Scalable = 20,
+        ER_AAC_LD = 23,
+    };
     unsigned char profile : 5;
+
+    /*
+    sampling_frequency_index in aac adts header:
+    0x0 - 96000
+    0x1 - 88200
+    0x2 - 64000
+    0x3 - 48000
+    0x4 - 44100
+    0x5 - 32000
+    0x6 - 24000
+    0x7 - 22050
+    0x8 - 16000
+    0x9 - 12000
+    0xa - 11025
+    0xb - 8000
+
+    can read from adts header
+    */
     unsigned char sampleRateIndex : 4;
+    /*
+    1 - mono
+    2 - stereo
+    3 - center front, left, right
+    4 - center front, rear, left, right
+    */    
     unsigned char channels : 4;
     //CASpecificConfig
+    /*
+    For all General Audio Object Types except AAC SSR and ER AAC LD: 
+    If set to “0” a 1024/128 lines IMDCT is used and frameLength is set to 1024, if set to “1” a 960/120 line IMDCT is used and frameLength is set to 960.
+    For ER AAC LD: 
+    If set to “0” a 512 lines IMDCT is used and frameLength is set to 512, if set to “1” a 480 line IMDCT is used and frameLength is set to 480. 
+    For AAC SSR:
+    Must be set to “0”. A 256/32 lines IMDCT is used. Note: The actual number of lines for the IMDCT (first or second value) is distinguished by the value of window_sequence. 
+
+    So set 0 for aac-lc.
+    */
     unsigned char frameLengthFlag : 1;
+    /* does not depend on core coder, set 0 */
     unsigned char dependsOnCoreCoder : 1;
+    /* is not extension, set 0 */
     unsigned char extentionFlag : 1;
 };
 
-
 struct AVCDecoderConfigurationRecord
 {
-    /* data */
+    unsigned char version;
+    unsigned char profileIndication;
+    unsigned char profileCompatibility;
+    unsigned char levelIndication;
+    //reserved = ‘111111’
+    unsigned char reserved6 : 6;
+    unsigned char lengthSizeMinusOne : 2;
+    //reserved = ‘111’
+    unsigned char reserved3 : 3;
+    //for avc  is 2, sps + pps
+    unsigned char numOfSequenceParameterSets : 5;
+    //sps
+    struct SPS
+    {
+        uint16_t sequenceParameterSetLength;
+        //bit(8*sequenceParameterSetLength)
+        uint8_t * sequenceParameterSetNALUnit;
+    };
+    //pps
+    struct PPS
+    {
+        uint16_t pictureParameterSetLength;
+        uint8_t *pictureParameterSetNALUnit;
+    };
+    
+    SPS sps;
+    PPS pps;
+    
+    /*
+    ref to : https://en.wikipedia.org/wiki/Advanced_Video_Coding#Profiles
+    profile_idc:
+    Baseline Profile (BP, 66)
+    Main Profile (MP, 77)
+    Extended Profile (XP, 88)
+    High Profile (HiP, 100)
+    High 10 Profile (Hi10P, 110)
+    High 4:2:2 Profile (Hi422P, 122)
+    High 4:4:4 Predictive Profile (Hi444PP, 244)
+    */
 };
 
 
@@ -318,6 +415,7 @@ struct AVCDecoderConfigurationRecord
 
 
 
+#pragma pack()
 
 } // namespace nx
 
