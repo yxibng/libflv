@@ -28,18 +28,14 @@ struct H264SPS {
     uint8_t chroma_format_idc;
     uint8_t bit_depth_luma;
     uint8_t bit_depth_chroma;
-    uint8_t frame_mbs_only_flag;
 };
 
-/// @brief Extract rbsb from a nal unit. Remove emulation_prevention_three_byte.
-/// @param src  The nal unit buf pointer.
-/// @param src_len  The length of the nal unit buf.
+/// @brief Extract rbsb from ebsp. Remove emulation_prevention_three_byte.
+/// @param src  The ebsp pointer.
+/// @param src_len  The length of the ebsp buf.
 /// @param dst_len The length of the returned rbsp buf.
-/// @param header_len The nal unit header length.
- /// @return The rbsp buf pointer, return NULL if failed.  If not NULL, Should call free to free the memory. \
-If header_len != 0, returned rbsp = nal_header + rbsp.
-
-uint8_t *nal_unit_extract_rbsp( const uint8_t *src, uint32_t src_len, uint32_t *dst_len, int header_len = 1 );
+/// @return The rbsp buf pointer, return NULL if failed.  If not NULL, Should call free to free the memory.
+uint8_t *nal_unit_extract_rbsp_from_ebsp( const uint8_t *src, uint32_t src_len, uint32_t *dst_len );
 
 /// @brief Decode sps from nal unit.
 /// @param sps the H264SPS struct pointer to be filled with data.

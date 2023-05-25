@@ -10,14 +10,14 @@ enable_testing()
 
 
 
+file(GLOB SourceFiles RELATIVE flv_app "*.cpp")
 
 
-add_executable(flv_app main.cpp libflv/flvmuxer.cpp libflv/avc.cpp)
+add_executable(flv_app main.cpp ${SourceFiles})
 
 target_include_directories(flv_app PUBLIC
                            "${CMAKE_CURRENT_LIST_DIR}/libflv"
                            )
-
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

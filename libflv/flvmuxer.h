@@ -3,41 +3,17 @@
 
 #include <iostream>
 
-namespace nx
-{
-
-
-
-
-
+namespace nx {
 class FlvMuxer {
 
 private:
-
-bool hasVideo;
-bool hasAudio;
-FILE *flvFile;
+    bool  hasVideo;
+    bool  hasAudio;
+    FILE *flvFile;
 
 public:
-
-
-
-
-
-
-
 };
 
-
-    
 } // namespace nx
-
-
-
-
-
-
-
-
 
 #endif // __FLVMUXER_H__
