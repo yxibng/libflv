@@ -349,7 +349,17 @@ struct AudioSpecificConfig {
     unsigned char extentionFlag : 1;
 };
 
+// IOS_IEC_14496-15-AVC-Format
 struct AVCDecoderConfigurationRecord {
+    struct SPS {
+        uint16_t sequenceParameterSetLength;
+        uint8_t *sequenceParameterSetNALUnit;
+    };
+
+    struct PPS {
+        uint16_t pictureParameterSetLength;
+        uint8_t *pictureParameterSetNALUnit;
+    };
     unsigned char version;
     unsigned char profileIndication;
     unsigned char profileCompatibility;
@@ -359,21 +369,13 @@ struct AVCDecoderConfigurationRecord {
     unsigned char lengthSizeMinusOne : 2;
     // reserved = ‘111’
     unsigned char reserved3 : 3;
-    // for avc  is 2, sps + pps
+    // usually 1
     unsigned char numOfSequenceParameterSets : 5;
     // sps
-    struct SPS {
-        uint16_t sequenceParameterSetLength;
-        // bit(8*sequenceParameterSetLength)
-        uint8_t *sequenceParameterSetNALUnit;
-    };
-    // pps
-    struct PPS {
-        uint16_t pictureParameterSetLength;
-        uint8_t *pictureParameterSetNALUnit;
-    };
-
     SPS sps;
+    // usually 1
+    unsigned char numOfPictureParameterSets;
+    // pps
     PPS pps;
 
     /*
