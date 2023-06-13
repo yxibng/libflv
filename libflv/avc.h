@@ -8,6 +8,53 @@
 
 namespace nx {
 
+// IOS_IEC_14496-15-AVC-Format
+struct AVCDecoderConfigurationRecord {
+    struct SPS {
+        uint16_t sequenceParameterSetLength;
+        uint8_t *sequenceParameterSetNALUnit;
+    };
+    
+    struct PPS {
+        uint16_t pictureParameterSetLength;
+        uint8_t *pictureParameterSetNALUnit;
+    };
+    unsigned char version;
+    unsigned char profileIndication;
+    unsigned char profileCompatibility;
+    unsigned char levelIndication;
+    // reserved = ‘111111’
+    unsigned char reserved6 : 6;
+    unsigned char lengthSizeMinusOne : 2;
+    // reserved = ‘111’
+    unsigned char reserved3 : 3;
+    // usually 1
+    unsigned char numOfSequenceParameterSets : 5;
+    // sps
+    SPS sps;
+    // usually 1
+    unsigned char numOfPictureParameterSets;
+    // pps
+    PPS pps;
+    
+    /*
+     ref to : https://en.wikipedia.org/wiki/Advanced_Video_Coding#Profiles
+     profile_idc:
+     Baseline Profile (BP, 66)
+     Main Profile (MP, 77)
+     Extended Profile (XP, 88)
+     High Profile (HiP, 100)
+     High 10 Profile (Hi10P, 110)
+     High 4:2:2 Profile (Hi422P, 122)
+     High 4:4:4 Predictive Profile (Hi444PP, 244)
+     */
+};
+
+
+
+
+
+
 struct H264SPS {
     uint8_t profile_idc;
     uint8_t level_idc;
