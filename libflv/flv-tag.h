@@ -79,6 +79,7 @@ struct flv_aac_audio_specific_config_tag_t {
         audioTagHeader.timestamp = timestamp;
         // audio tag header 2 + audio specific config 2
         audioTagHeader.dataSize = 4;
+        audioTagHeader.tagType  = flv_tag_header_t::TagType::audio;
 
         audioTagHeader.soundFormat = flv_audio_tag_header_t::aac;
         audioTagHeader.soundRate   = flv_audio_tag_header_t::rate44khz;
@@ -97,6 +98,7 @@ struct flv_aac_raw_tag_t {
     uint32_t                      aacRawSize;
     flv_aac_raw_tag_t( uint8_t *aacRaw, uint32_t aacRawSize, uint32_t timestamp ) {
 
+        audioTagHeader.tagType   = flv_tag_header_t::TagType::audio;
         audioTagHeader.timestamp = timestamp;
         // audio tag header 2 + aac raw size
         audioTagHeader.dataSize = 2 + aacRawSize;
@@ -116,6 +118,13 @@ struct flv_aac_raw_tag_t {
 
 struct flv_avc_sequence_header_tag_t {
     struct flv_video_tag_header videoTagHeader;
+
+    flv_avc_sequence_header_tag_t( uint8_t *buf, uint32_t size, uint32_t timestamp ) {
+        videoTagHeader.tagType   = flv_tag_header_t::TagType::video;
+        videoTagHeader.timestamp = timestamp;
+        // video tag header
+        videoTagHeader.dataSize = 2 + aacRawSize;
+    }
 };
 
 struct flv_avc_nalu_tag_t {

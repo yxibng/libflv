@@ -3,49 +3,40 @@
 #include <memory>
 namespace nx {
 
-uint8_t *nal_unit_extract_rbsp_from_ebsp( const uint8_t *src, uint32_t src_len, uint32_t *dst_len ) {
-    uint8_t *dst = (uint8_t *)calloc( src_len, 1 );
-    uint32_t i, len;
-    i = len = 0;
-    while ( i + 2 < src_len ) {
+uint8_t *avc_extract_rbsp_from_nalu( const uint8_t *nalu, uint32_t nalu_size, uint32_t *rbsp_size ) {
+    uint8_t *rbsp = (uint8_t *)calloc( nalu_size, 1 );
+    if ( !rbsp ) return NULL;
+    uint32_t i   = 1; // skip nalu header 1 byte
+    uint32_t len = 0;
+    while ( i + 2 < nalu_size ) {
         // 00 00 03， 03 should be skipped
-        if ( !src[i] && !src[i + 1] && src[i + 2] == 3 ) {
-            dst[len++] = src[i++];
-            dst[len++] = src[i++];
+        if ( !nalu[i] && !nalu[i + 1] && nalu[i + 2] == 3 ) {
+            rbsp[len++] = nalu[i++];
+            rbsp[len++] = nalu[i++];
             i++; // remove emulation_prevention_three_byte
         }
         else {
-            dst[len++] = src[i++];
+            rbsp[len++] = nalu[i++];
         }
     }
-
-    while ( i < src_len ) {
-        dst[len++] = src[i++];
+    while ( i < nalu_size ) {
+        rbsp[len++] = nalu[i++];
     }
-
-    *dst_len = len;
-    return dst;
+    *rbsp_size = len;
+    return rbsp;
 }
 
-int avc_decode_sps( H264SPS *sps, const uint8_t *buf, int buf_size ) {
-    uint32_t dst_len;
-
-    int      offset = 1; // skip 1 byte header
-    uint8_t *rbsp   = nal_unit_extract_rbsp_from_ebsp( buf + offset, buf_size - offset, &dst_len );
+int avc_decode_sps( H264SPS *sps, const uint8_t *sps_nalu, uint32_t sps_nalu_size ) {
+    uint32_t dst_len = 0;
+    uint8_t *rbsp    = avc_extract_rbsp_from_nalu( sps_nalu, sps_nalu_size, &dst_len );
     if ( !rbsp ) return -1;
     memset( sps, 0, sizeof( *sps ) );
 
     GetBitContext bitContext = GetBitContext( rbsp, dst_len );
     // profile
     sps->profile_idc = bitContext.get_bits( 8 );
-    // flags
-    sps->constraint_set0_flags = bitContext.get_bit1();
-    sps->constraint_set1_flags = bitContext.get_bit1();
-    sps->constraint_set2_flags = bitContext.get_bit1();
-    sps->constraint_set3_flags = bitContext.get_bit1();
-    sps->constraint_set4_flags = bitContext.get_bit1();
-    sps->constraint_set5_flags = bitContext.get_bit1();
-    bitContext.skip_bits( 2 );
+    // compatibility
+    sps->compatibility = bitContext.get_bits( 8 );
     // level
     sps->level_idc = bitContext.get_bits( 8 );
     if ( sps->profile_idc == 100 || sps->profile_idc == 110 ||
@@ -65,6 +56,8 @@ int avc_decode_sps( H264SPS *sps, const uint8_t *buf, int buf_size ) {
         sps->bit_depth_luma    = 8;
         sps->bit_depth_chroma  = 8;
     }
+    free( rbsp );
+    return 0;
 }
 
 }; // namespace nx
