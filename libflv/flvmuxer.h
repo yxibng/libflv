@@ -56,8 +56,9 @@ public:
      * @param buf h264 annex-b buffer, seperated by 00 00 00 01
      * @param length  length of the  h264 buf
      * @param timestamp  timestamp of this buffer
+     * @param isKeyFrame  whether buf is keyFrame or not
      */
-    void mux_avc( uint8_t *buf, size_t length, uint32_t timestamp );
+    void mux_avc( uint8_t *buf, size_t length, uint32_t timestamp , bool isKeyFrame);
 };
 
 } // namespace nx
