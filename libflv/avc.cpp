@@ -3,6 +3,49 @@
 #include <memory>
 namespace nx {
 
+// find 00 00 01
+uint8_t *avc_find_startcode( uint8_t *p, uint8_t *end ) {
+    intptr_t count        = end - p + 1;
+    uint8_t  startCode[3] = { 0, 0, 1 };
+    int      offset       = 0;
+    while ( count >= 3 && offset < count ) {
+        if ( startCode[0] == p[offset] && startCode[1] == p[offset + 1] && startCode[2] == p[offset + 2] ) {
+            return p;
+        }
+        else {
+            offset++;
+        }
+    }
+    return NULL;
+}
+
+void split_nalus( uint8_t *buf, uint32_t size, std::vector<Buffer> &nalus ) {
+    uint8_t *startCode = avc_find_startcode( buf, buf + size - 1 );
+    if ( !startCode ) return;
+    while ( startCode ) {
+        // find next start code ptr
+        uint8_t *nextStartCode = avc_find_startcode( startCode + 3, buf + size - 1 );
+        // nalu start ptr
+        uint8_t *naluStart = startCode + 3;
+        // nalu end ptr
+        uint8_t *naluEnd = nullptr;
+        if ( nextStartCode ) {
+            naluEnd = nextStartCode - 1;
+        }
+        else {
+            naluEnd = buf + size - 1;
+        }
+
+        // remove trailing zero
+        while ( *naluEnd == 0 ) {
+            naluEnd = naluEnd - 1;
+        }
+        // save buffer
+        intptr_t nalLength = naluEnd - naluStart + 1;
+        nalus.emplace_back( naluStart, nalLength );
+    }
+}
+
 uint8_t *avc_extract_rbsp_from_nalu( const uint8_t *nalu, uint32_t nalu_size, uint32_t *rbsp_size ) {
     uint8_t *rbsp = (uint8_t *)calloc( nalu_size, 1 );
     if ( !rbsp ) return NULL;

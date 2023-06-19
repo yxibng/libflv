@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 
 namespace nx {
 
@@ -27,82 +28,6 @@ enum NaluType {
     SPS = 7,
     PPS = 8
 };
-
-// IOS_IEC_14496-15-AVC-Format
-struct AVCDecoderConfigurationRecord {
-    struct SPS {
-        uint16_t sequenceParameterSetLength  = 0;
-        uint8_t *sequenceParameterSetNALUnit = nullptr;
-        SPS( uint8_t *nalu, uint16_t size ) {
-            sequenceParameterSetLength  = size;
-            sequenceParameterSetNALUnit = (uint8_t *)malloc( size );
-            memcpy( sequenceParameterSetNALUnit, nalu, size );
-        }
-        ~SPS() {
-            if ( sequenceParameterSetNALUnit ) {
-                free( sequenceParameterSetNALUnit );
-            }
-        }
-    };
-
-    struct PPS {
-        uint16_t pictureParameterSetLength;
-        uint8_t *pictureParameterSetNALUnit;
-        PPS( uint8_t *nalu, uint16_t size ) {
-            pictureParameterSetLength  = size;
-            pictureParameterSetNALUnit = (uint8_t *)malloc( size );
-            memcpy( pictureParameterSetNALUnit, nalu, size );
-        }
-        ~PPS() {
-            if ( pictureParameterSetNALUnit ) {
-                free( pictureParameterSetNALUnit );
-            }
-        }
-    };
-    unsigned char version;
-    unsigned char profileIndication;
-    unsigned char profileCompatibility;
-    unsigned char levelIndication;
-    // reserved = ‘111111’
-    unsigned char reserved6 : 6;
-    unsigned char lengthSizeMinusOne : 2;
-    // reserved = ‘111’
-    unsigned char reserved3 : 3;
-    // usually 1
-    unsigned char numOfSequenceParameterSets : 5;
-    // sps
-    SPS *sps;
-    // usually 1
-    unsigned char numOfPictureParameterSets;
-    // pps
-    PPS *pps;
-
-    /*
-     ref to : https://en.wikipedia.org/wiki/Advanced_Video_Coding#Profiles
-     profile_idc:
-     Baseline Profile (BP, 66)
-     Main Profile (MP, 77)
-     Extended Profile (XP, 88)
-     High Profile (HiP, 100)
-     High 10 Profile (Hi10P, 110)
-     High 4:2:2 Profile (Hi422P, 122)
-     High 4:4:4 Predictive Profile (Hi444PP, 244)
-     */
-
-    void fillSps( uint8_t *sps, uint16_t size ) {
-        this->sps = new SPS( sps, size );
-    }
-
-    void fillPps( uint8_t *pps, uint16_t size ) {
-        this->pps = new PPS( pps, size );
-    }
-
-    ~AVCDecoderConfigurationRecord() {
-        if ( sps ) delete sps;
-        if ( pps ) delete pps;
-    }
-};
-
 struct H264SPS {
     uint8_t profile_idc;
     uint8_t compatibility;
@@ -112,6 +37,41 @@ struct H264SPS {
     uint8_t bit_depth_chroma;
 };
 
+struct Buffer {
+    uint8_t *buf;
+    uint32_t size;
+    Buffer( uint8_t *buf, uint32_t size )
+        : buf( (uint8_t *)malloc( size ) ), size( size ) {
+        memcpy( this->buf, buf, size );
+    }
+    Buffer( Buffer &&buffer ) {
+        this->buf  = buffer.buf;
+        this->size = buffer.size;
+
+        buffer.buf  = nullptr;
+        buffer.size = 0;
+    }
+    ~Buffer() {
+        if ( buf ) free( buf );
+    }
+};
+
+/**
+ * @brief  find 00 00 01 from [p, end]
+ *
+ * @param p start pointer
+ * @param end  end pointer
+ * @return uint8_t* the start code (00, 00, 01) pointer, null if not found.
+ */
+uint8_t *avc_find_startcode( uint8_t *p, uint8_t *end );
+/**
+ * @brief split a avc frame to nal units.
+ *
+ * @param buf the avc frame buf.
+ * @param size the avc frame size.
+ * @param nalus nal units splited from the avc frame.
+ */
+void split_nalus( uint8_t *buf, uint32_t size, std::vector<Buffer> &nalus );
 /**
  * @brief Extract rbsb from nalu. Remove emulation_prevention_three_byte and nalu header.
  *

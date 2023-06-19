@@ -6,27 +6,6 @@
 
 namespace nx {
 class FlvMuxer {
-
-public:
-    struct Buffer {
-        uint8_t *buf;
-        uint32_t size;
-        Buffer( uint8_t *buf, uint32_t size )
-            : buf( (uint8_t *)malloc( size ) ), size( size ) {
-            memcpy( this->buf, buf, size );
-        }
-        Buffer( Buffer &&buffer ) {
-            this->buf  = buffer.buf;
-            this->size = buffer.size;
-
-            buffer.buf  = nullptr;
-            buffer.size = 0;
-        }
-        ~Buffer() {
-            if ( buf ) free( buf );
-        }
-    };
-
 private:
     bool  hasVideo;
     bool  hasAudio;
@@ -58,7 +37,7 @@ public:
      * @param timestamp  timestamp of this buffer
      * @param isKeyFrame  whether buf is keyFrame or not
      */
-    void mux_avc( uint8_t *buf, size_t length, uint32_t timestamp , bool isKeyFrame);
+    void mux_avc( uint8_t *buf, size_t length, uint32_t timestamp, bool isKeyFrame );
 };
 
 } // namespace nx
