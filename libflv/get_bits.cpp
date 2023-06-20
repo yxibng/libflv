@@ -2,7 +2,7 @@
 
 namespace nx {
 
-GetBitContext::GetBitContext( uint8_t *buffer, int bytes ) {
+GetBitContext::GetBitContext( const uint8_t *buffer, int bytes ) {
     this->buffer   = buffer;
     this->bitCount = bytes * 8;
 }
@@ -44,10 +44,9 @@ int32_t GetBitContext::get_se_golomb() {
     return value * sign;
 }
 
-
-void GetBitContext::skip_bits(int n) {
-    assert(n > 0 && n < 32);
-    if (this->index + n < bitCount) {
+void GetBitContext::skip_bits( int n ) {
+    assert( n > 0 && n < 32 );
+    if ( this->index + n < bitCount ) {
         this->index += n;
     }
 }

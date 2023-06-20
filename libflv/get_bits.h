@@ -11,12 +11,12 @@ namespace nx {
 
 class GetBitContext {
 private:
-    uint8_t *buffer   = nullptr;
-    int      index    = 0;
-    int      bitCount = 0;
+    const uint8_t *buffer   = nullptr;
+    int            index    = 0;
+    int            bitCount = 0;
 
 public:
-    GetBitContext( uint8_t *buffer, int bytes );
+    GetBitContext( const uint8_t *buffer, int bytes );
     ~GetBitContext() = default;
     uint32_t get_bit1();
     uint32_t get_bits( int n );
