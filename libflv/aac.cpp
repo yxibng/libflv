@@ -75,8 +75,9 @@ void adts_header::adts_header_to_buf( const adts_header &header, uint8_t buf[7] 
     context.put_bits( 2, header.variable_header.number_of_raw_data_blocks_in_frame );
 }
 
-void adts_header::parse_adts_header( adts_header &header, const uint8_t buf[7] ) {
+adts_header adts_header::parse_adts_header( const uint8_t buf[7] ) {
 
+    adts_header   header;
     GetBitContext context = GetBitContext( buf, 7 );
     // fixed header
     header.fixed_header.syncword                 = context.get_bits( 12 ); // 12bits
@@ -95,6 +96,27 @@ void adts_header::parse_adts_header( adts_header &header, const uint8_t buf[7] )
     header.variable_header.aac_frame_length                   = context.get_bits( 13 ); // 13bits
     header.variable_header.adts_buffer_fullness               = context.get_bits( 11 ); // 11bits
     header.variable_header.number_of_raw_data_blocks_in_frame = context.get_bits( 2 );  // 11bits
+    return header;
+}
+
+AudioSpecificConfig::AudioSpecificConfig( uint8_t adts_header_buf[7] ) {
+    adts_header header           = adts_header::parse_adts_header( adts_header_buf );
+    this->audioObjectType        = header.fixed_header.profile + 1;
+    this->samplingFrequencyIndex = header.fixed_header.sampling_frequency_index;
+    this->channelConfiguration   = header.fixed_header.channel_configuration;
+    this->frameLengthFlag        = 0;
+    this->dependsOnCoreCoder     = 0;
+    this->extensionFlag          = 0;
+}
+
+void AudioSpecificConfig::to_buf( uint8_t buf[2] ) {
+    PutBitsContext context = PutBitsContext( buf, 2 );
+    context.put_bits( 5, audioObjectType );
+    context.put_bits( 4, samplingFrequencyIndex );
+    context.put_bits( 4, channelConfiguration );
+    context.put_bits( 1, frameLengthFlag );
+    context.put_bits( 1, dependsOnCoreCoder );
+    context.put_bits( 1, extensionFlag );
 }
 
 }; // namespace nx

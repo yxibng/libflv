@@ -2,8 +2,6 @@
 #define __FLVMUXER_H__
 
 #include "avc.h"
-#include "flv-tag.h"
-
 namespace nx {
 class FlvMuxer {
 private:
@@ -14,8 +12,17 @@ private:
     bool aacSequenceHeaderFlag = false;
     bool avcSequenceHeaderFlag = false;
 
-    Buffer *sps = nullptr;
-    Buffer *pps = nullptr;
+    NaluBuffer *sps = nullptr;
+    NaluBuffer *pps = nullptr;
+    /**
+     * @brief mux data call back
+     *
+     * @param type  8 - audio, 9 - video, 18 - script data
+     * @param data  buf pointer
+     * @param bytes  but bytes
+     * @param data  timestamp, audio is pts, video is dts
+     */
+    void onMuxedData( int type, const uint8_t *data, size_t bytes, uint32_t timestamp );
 
 public:
     ~FlvMuxer();
@@ -30,14 +37,16 @@ public:
      */
     void mux_aac( uint8_t *adts, size_t length, uint32_t timestamp );
     /**
-     * @brief
+     * @brief mux h264 annex-b frame, which is seperated by start code 00 00 00 01.
+     * The key frame should contain sps, pps, and IDR nalus.
      *
      * @param buf h264 annex-b buffer, seperated by 00 00 00 01
      * @param length  length of the  h264 buf
-     * @param timestamp  timestamp of this buffer
+     * @param pts  pts of this buffer
+     * @param pts  dts of this buffer
      * @param isKeyFrame  whether buf is keyFrame or not
      */
-    void mux_avc( uint8_t *buf, size_t length, uint32_t timestamp, bool isKeyFrame );
+    void mux_avc( uint8_t *buf, size_t length, uint32_t pts, uint32_t dts, bool isKeyFrame );
 };
 
 } // namespace nx

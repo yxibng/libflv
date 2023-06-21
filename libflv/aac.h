@@ -75,9 +75,53 @@ struct adts_header {
     adts_variable_header variable_header;
 
     uint8_t sample_rate_index( uint32_t sample_rate );
+    adts_header() = default;
     adts_header( Profile profile, uint32_t sample_rate, uint8_t channelCount, int size );
-    static void adts_header_to_buf( const adts_header &header, uint8_t buf[7] );
-    static void parse_adts_header( adts_header &header, const uint8_t buf[7] );
+    static void        adts_header_to_buf( const adts_header &header, uint8_t buf[7] );
+    static adts_header parse_adts_header( const uint8_t buf[7] );
+};
+/**
+ * @brief AAC AudioSpecificConfig
+ * Refer to ISO 14496-3-2009. 2 bytes when write to file.
+ */
+struct AudioSpecificConfig {
+
+    /*
+    AAC_Main        = 1,
+    AAC_LC          = 2,
+    AAC_SSR         = 3,
+    AAC_LTP         = 4,
+    AAC_Scalable    = 6,
+    ER_AAC_LC       = 17,
+    ER_AAC_LTP      = 19,
+    ER_AAC_Scalable = 20,
+    ER_AAC_LD       = 23,
+     */
+    uint32_t audioObjectType : 5;
+    uint32_t samplingFrequencyIndex : 4;
+    uint32_t channelConfiguration : 4;
+    // GASpecificConfig()
+    struct
+    {
+        /*
+        For all General Audio Object Types except AAC SSR and ER AAC LD:
+        If set to “0” a 1024/128 lines IMDCT is used and frameLength is set to 1024, if set to “1” a 960/120 line IMDCT is used and frameLength is set to 960.
+        For ER AAC LD:
+        If set to “0” a 512 lines IMDCT is used and frameLength is set to 512, if set to “1” a 480 line IMDCT is used and frameLength is set to 480.
+        For AAC SSR:
+        Must be set to “0”. A 256/32 lines IMDCT is used. Note: The actual number of lines for the IMDCT (first or second value) is distinguished by the value of window_sequence.
+
+        So set 0 for aac-lc.
+         */
+        uint32_t frameLengthFlag : 1;
+        /* does not depend on core coder, set 0 */
+        uint32_t dependsOnCoreCoder : 1;
+        /* is not extension, set 0 */
+        uint32_t extensionFlag : 1;
+    };
+    AudioSpecificConfig() = default;
+    AudioSpecificConfig( uint8_t adts_header_buf[7] );
+    void to_buf( uint8_t buf[2] );
 };
 
 };     // namespace nx

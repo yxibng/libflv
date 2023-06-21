@@ -29,20 +29,33 @@ enum NaluType {
     PPS = 8
 };
 struct H264SPS {
+    uint8_t id;
     uint8_t profile_idc;
     uint8_t compatibility;
     uint8_t level_idc;
     uint8_t chroma_format_idc;
-    uint8_t bit_depth_luma;
-    uint8_t bit_depth_chroma;
+    uint8_t bit_depth_luma_minus8;
+    uint8_t bit_depth_chroma_minus8;
 };
 
+template <typename T>
 struct Buffer {
     uint8_t *buf;
-    uint32_t size;
-    Buffer( uint8_t *buf, uint32_t size )
+    T        size;
+    Buffer( uint8_t *buf, T size )
         : buf( (uint8_t *)malloc( size ) ), size( size ) {
         memcpy( this->buf, buf, size );
+    }
+    Buffer( const Buffer &buffer ) {
+        this->buf  = (uint8_t *)malloc( buffer.size );
+        this->size = buffer.size;
+        memccpy( this->buf, buffer.buf, buffer.size, 1 );
+    }
+    Buffer &operator=( const Buffer &buffer ) {
+        this->buf  = (uint8_t *)malloc( buffer.size );
+        this->size = buffer.size;
+        memccpy( this->buf, buffer.buf, buffer.size, 1 );
+        return *this;
     }
     Buffer( Buffer &&buffer ) {
         this->buf  = buffer.buf;
@@ -54,6 +67,46 @@ struct Buffer {
     ~Buffer() {
         if ( buf ) free( buf );
     }
+};
+
+struct AVCDecoderConfigurationRecord {
+
+    // Annex-B to MP4, 00 00 00 01 to 4 bytes nalu length
+    static const int NaluLengthSize = 4;
+
+    using sps_pps_buf = Buffer<uint16_t>;
+
+    uint8_t configurationVersion = 1;
+    uint8_t AVCProfileIndication;
+    uint8_t profile_compatibility;
+    uint8_t AVCLevelIndication;
+    uint8_t : 6;                                             // reserved, all 1
+    uint8_t lengthSizeMinusOne : 2;
+    uint8_t : 3;                                             // reserved, all 1
+    uint8_t                  numOfSequenceParameterSets : 5; // sps count
+    std::vector<sps_pps_buf> spsNalus;                       // sps array
+    uint8_t                  numOfPictureParameterSets;      // pps count
+    std::vector<sps_pps_buf> ppsNalus;                       // pps array
+    struct SPSExt {
+        /*
+       when profile_idc is one of  [100, 110, 122, 244, 44, 83, 86, 118, 128, 138, 139, 134], the following varibles is valid.
+        */
+        uint8_t : 6;                         // reserved, all 1
+        uint8_t chroma_format : 2;           // chroma_format
+        uint8_t : 5;                         // reserved, all 1
+        uint8_t bit_depth_luma_minus8 : 3;   // bit_depth_luma_minus8
+        uint8_t : 5;                         // reserved, all 1
+        uint8_t bit_depth_chroma_minus8 : 3; // bit_depth_chroma_minus8
+
+        uint8_t                  numOfSequenceParameterSetExt;
+        std::vector<sps_pps_buf> spsExtNalus; // sps ext array
+    };
+    SPSExt spsExt;
+
+    AVCDecoderConfigurationRecord( uint8_t *spsNalu, uint16_t spsLength,
+                                   uint8_t *ppsNalu, uint16_t ppsLength );
+
+    std::vector<uint8_t> to_buf();
 };
 
 /**
@@ -71,7 +124,9 @@ uint8_t *avc_find_startcode( uint8_t *p, uint8_t *end );
  * @param size the avc frame size.
  * @param nalus nal units splited from the avc frame.
  */
-void split_nalus( uint8_t *buf, uint32_t size, std::vector<Buffer> &nalus );
+
+using NaluBuffer = Buffer<uint32_t>;
+void split_nalus( uint8_t *buf, uint32_t size, std::vector<NaluBuffer> &nalus );
 /**
  * @brief Extract rbsb from nalu. Remove emulation_prevention_three_byte and nalu header.
  *
