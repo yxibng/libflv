@@ -104,7 +104,7 @@ void FlvMuxer::mux_avc( uint8_t *buf, size_t length, uint32_t pts, uint32_t dts,
         4. write avc tags
     */
     vector<NaluBuffer> nalus;
-    split_nalus( buf, length, nalus );
+    split_nalus( buf, (uint32_t)length, nalus );
     if ( nalus.empty() ) return;
 
     if ( !avcSequenceHeaderFlag ) {
@@ -114,6 +114,7 @@ void FlvMuxer::mux_avc( uint8_t *buf, size_t length, uint32_t pts, uint32_t dts,
             uint8_t  naluType = ( *nalu ) & 0x1F;
             if ( naluType == NaluType::SPS ) {
                 if ( !this->sps ) {
+                    assert(buf != NULL);
                     this->sps = new NaluBuffer( it->buf, it->size );
                 }
             }

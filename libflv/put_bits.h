@@ -6,11 +6,11 @@ namespace nx {
 
 struct PutBitsContext {
 
-private:
+  private:
     struct
     {
-        uint8_t *buffer   = nullptr;
-        int      capacity = 0;
+        uint8_t *buffer = nullptr;
+        int capacity = 0; // bytes
     };
 
     struct
@@ -21,8 +21,8 @@ private:
         int bit_left = 0;
     };
 
-public:
-    PutBitsContext( uint8_t *buffer, int bytes );
+  public:
+    PutBitsContext(uint8_t *buffer, int bytes);
     ~PutBitsContext() = default;
     /**
      * @brief
@@ -30,9 +30,9 @@ public:
      * @param n number of bits to write
      * @param value
      */
-    void put_bits( int n, uint32_t value );
+    void put_bits(int n, uint32_t value);
 };
 
-};     // namespace nx
+}; // namespace nx
 
 #endif // __PUT_BITS_H__

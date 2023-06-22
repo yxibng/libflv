@@ -7,10 +7,10 @@ namespace nx {
 
 // ISO/IEC 13818-7:2004(E)
 struct adts_fixed_header {
-    unsigned short syncword : 12;         // Syncword, all bits must be set to 1.
-    unsigned char  id : 1;                // MPEG Version, set to 0 for MPEG-4 and 1 for MPEG-2.
-    unsigned char  layer : 2;             // Layer, always set to 0.
-    unsigned char  protection_absent : 1; // Protection absence, set to 1 if there is no CRC and 0 if there is CRC.
+    unsigned short syncword : 12;        // Syncword, all bits must be set to 1.
+    unsigned char id : 1;                // MPEG Version, set to 0 for MPEG-4 and 1 for MPEG-2.
+    unsigned char layer : 2;             // Layer, always set to 0.
+    unsigned char protection_absent : 1; // Protection absence, set to 1 if there is no CRC and 0 if there is CRC.
     /*
     Profile, the MPEG-4 Audio Object Type minus 1. https://wiki.multimedia.cx/index.php/MPEG-4_Audio#Audio_Object_Types.
     0 Main profile
@@ -57,28 +57,29 @@ struct adts_fixed_header {
 };                                   // length : 28 bits
 
 struct adts_variable_header {
-    unsigned char  copyright_identification_bit : 1;
-    unsigned char  copyright_identification_start : 1;
-    unsigned short aac_frame_length : 13;                  // Frame length, length of the ADTS frame including headers and CRC check.
+    unsigned char copyright_identification_bit : 1;
+    unsigned char copyright_identification_start : 1;
+    unsigned short aac_frame_length : 13; // Frame length, length of the ADTS frame including headers and CRC check.
     unsigned short adts_buffer_fullness : 11;
-    unsigned char  number_of_raw_data_blocks_in_frame : 2; // Number of AAC frames (RDBs (Raw Data Blocks)) in ADTS frame minus 1. For maximum compatibility always use one AAC frame per ADTS frame.
-};                                                         // length : 28 bits
+    unsigned char number_of_raw_data_blocks_in_frame : 2; // Number of AAC frames (RDBs (Raw Data Blocks)) in ADTS frame minus 1. For maximum compatibility always use one AAC frame per ADTS frame.
+};                                                        // length : 28 bits
 
 struct adts_header {
 
     enum Profile {
         Main = 0,
-        LC   = 1,
-        SSR  = 2
+        LC = 1,
+        SSR = 2
     };
-    adts_fixed_header    fixed_header;
+    adts_fixed_header fixed_header;
     adts_variable_header variable_header;
 
-    uint8_t sample_rate_index( uint32_t sample_rate );
+    uint8_t sample_rate_index(uint32_t sample_rate);
     adts_header() = default;
-    adts_header( Profile profile, uint32_t sample_rate, uint8_t channelCount, int size );
-    static void        adts_header_to_buf( const adts_header &header, uint8_t buf[7] );
-    static adts_header parse_adts_header( const uint8_t buf[7] );
+    adts_header(Profile profile, uint32_t sample_rate, uint8_t channelCount, int aac_frame_length);
+    void to_buf(uint8_t buf[7]);
+    static void adts_header_to_buf(const adts_header &header, uint8_t buf[7]);
+    static adts_header parse_adts_header(const uint8_t buf[7]);
 };
 /**
  * @brief AAC AudioSpecificConfig
@@ -120,10 +121,10 @@ struct AudioSpecificConfig {
         uint32_t extensionFlag : 1;
     };
     AudioSpecificConfig() = default;
-    AudioSpecificConfig( uint8_t adts_header_buf[7] );
-    void to_buf( uint8_t buf[2] );
+    AudioSpecificConfig(uint8_t adts_header_buf[7]);
+    void to_buf(uint8_t buf[2]);
 };
 
-};     // namespace nx
+}; // namespace nx
 
 #endif // __AAC_H__

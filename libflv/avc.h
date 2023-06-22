@@ -41,31 +41,32 @@ struct H264SPS {
 template <typename T>
 struct Buffer {
     uint8_t *buf;
-    T        size;
-    Buffer( uint8_t *buf, T size )
-        : buf( (uint8_t *)malloc( size ) ), size( size ) {
-        memcpy( this->buf, buf, size );
+    T size;
+    Buffer(uint8_t *buf, T size) {
+        this->buf = (uint8_t *)malloc(size);
+        this->size = size;
+        memccpy(this->buf, buf, size, 1);
     }
-    Buffer( const Buffer &buffer ) {
-        this->buf  = (uint8_t *)malloc( buffer.size );
+    Buffer(const Buffer &buffer) {
+        this->buf = (uint8_t *)malloc(buffer.size);
         this->size = buffer.size;
-        memccpy( this->buf, buffer.buf, buffer.size, 1 );
+        memccpy(this->buf, buffer.buf, buffer.size, 1);
     }
-    Buffer &operator=( const Buffer &buffer ) {
-        this->buf  = (uint8_t *)malloc( buffer.size );
+    Buffer &operator=(const Buffer &buffer) {
+        this->buf = (uint8_t *)malloc(buffer.size);
         this->size = buffer.size;
-        memccpy( this->buf, buffer.buf, buffer.size, 1 );
+        memccpy(this->buf, buffer.buf, buffer.size, 1);
         return *this;
     }
-    Buffer( Buffer &&buffer ) {
-        this->buf  = buffer.buf;
+    Buffer(Buffer &&buffer) {
+        this->buf = buffer.buf;
         this->size = buffer.size;
 
-        buffer.buf  = nullptr;
+        buffer.buf = nullptr;
         buffer.size = 0;
     }
     ~Buffer() {
-        if ( buf ) free( buf );
+        if (buf) free(buf);
     }
 };
 
@@ -80,13 +81,13 @@ struct AVCDecoderConfigurationRecord {
     uint8_t AVCProfileIndication;
     uint8_t profile_compatibility;
     uint8_t AVCLevelIndication;
-    uint8_t : 6;                                             // reserved, all 1
+    uint8_t : 6; // reserved, all 1
     uint8_t lengthSizeMinusOne : 2;
-    uint8_t : 3;                                             // reserved, all 1
-    uint8_t                  numOfSequenceParameterSets : 5; // sps count
-    std::vector<sps_pps_buf> spsNalus;                       // sps array
-    uint8_t                  numOfPictureParameterSets;      // pps count
-    std::vector<sps_pps_buf> ppsNalus;                       // pps array
+    uint8_t : 3;                            // reserved, all 1
+    uint8_t numOfSequenceParameterSets : 5; // sps count
+    std::vector<sps_pps_buf> spsNalus;      // sps array
+    uint8_t numOfPictureParameterSets;      // pps count
+    std::vector<sps_pps_buf> ppsNalus;      // pps array
     struct SPSExt {
         /*
        when profile_idc is one of  [100, 110, 122, 244, 44, 83, 86, 118, 128, 138, 139, 134], the following varibles is valid.
@@ -98,13 +99,13 @@ struct AVCDecoderConfigurationRecord {
         uint8_t : 5;                         // reserved, all 1
         uint8_t bit_depth_chroma_minus8 : 3; // bit_depth_chroma_minus8
 
-        uint8_t                  numOfSequenceParameterSetExt;
+        uint8_t numOfSequenceParameterSetExt;
         std::vector<sps_pps_buf> spsExtNalus; // sps ext array
     };
     SPSExt spsExt;
 
-    AVCDecoderConfigurationRecord( uint8_t *spsNalu, uint16_t spsLength,
-                                   uint8_t *ppsNalu, uint16_t ppsLength );
+    AVCDecoderConfigurationRecord(uint8_t *spsNalu, uint16_t spsLength,
+        uint8_t *ppsNalu, uint16_t ppsLength);
 
     std::vector<uint8_t> to_buf();
 };
@@ -116,7 +117,7 @@ struct AVCDecoderConfigurationRecord {
  * @param end  end pointer
  * @return uint8_t* the start code (00, 00, 01) pointer, null if not found.
  */
-uint8_t *avc_find_startcode( uint8_t *p, uint8_t *end );
+uint8_t *avc_find_startcode(uint8_t *p, uint8_t *end);
 /**
  * @brief split a avc frame to nal units.
  *
@@ -126,7 +127,7 @@ uint8_t *avc_find_startcode( uint8_t *p, uint8_t *end );
  */
 
 using NaluBuffer = Buffer<uint32_t>;
-void split_nalus( uint8_t *buf, uint32_t size, std::vector<NaluBuffer> &nalus );
+void split_nalus(uint8_t *buf, uint32_t size, std::vector<NaluBuffer> &nalus);
 /**
  * @brief Extract rbsb from nalu. Remove emulation_prevention_three_byte and nalu header.
  *
@@ -135,15 +136,15 @@ void split_nalus( uint8_t *buf, uint32_t size, std::vector<NaluBuffer> &nalus );
  * @param rbsp_size The length of the returned rbsp buf.
  * @return uint8_t*  The rbsp buf pointer, return NULL if failed.  If not NULL, should be freed by the caller.
  */
-uint8_t *avc_extract_rbsp_from_nalu( const uint8_t *nalu, uint32_t nalu_size, uint32_t *rbsp_size );
+uint8_t *avc_extract_rbsp_from_nalu(const uint8_t *nalu, uint32_t nalu_size, uint32_t *rbsp_size);
 
 /// @brief Decode sps from nal unit.
 /// @param sps the H264SPS struct pointer to be filled with data.
 /// @param sps_nalu sps nal unit buf.
 /// @param sps_nalu_size sps nal unit buf length.
 /// @return 0: success, <0: failed.
-int avc_decode_sps( H264SPS *sps, const uint8_t *sps_nalu, uint32_t sps_nalu_size );
+int avc_decode_sps(H264SPS *sps, const uint8_t *sps_nalu, uint32_t sps_nalu_size);
 
-};     // namespace nx
+}; // namespace nx
 
 #endif // __AVC_H__
