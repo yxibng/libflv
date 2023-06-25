@@ -14,7 +14,7 @@ adts_header::adts_header(Profile profile, uint32_t sample_rate, uint8_t channelC
     fixed_header.layer = 0;
     fixed_header.protection_absent = 1;
     fixed_header.profile = profile;
-    fixed_header.channel_configuration = sample_rate_index(sample_rate);
+    fixed_header.sampling_frequency_index = sample_rate_index(sample_rate);
     fixed_header.private_bit = 0;
     fixed_header.channel_configuration = channelCount;
     fixed_header.original_copy = 0;
