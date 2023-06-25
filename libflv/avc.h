@@ -45,17 +45,17 @@ struct Buffer {
     Buffer(uint8_t *buf, T size) {
         this->buf = (uint8_t *)malloc(size);
         this->size = size;
-        memccpy(this->buf, buf, size, 1);
+        memcpy(this->buf, buf, size);
     }
     Buffer(const Buffer &buffer) {
         this->buf = (uint8_t *)malloc(buffer.size);
         this->size = buffer.size;
-        memccpy(this->buf, buffer.buf, buffer.size, 1);
+        memcpy(this->buf, buffer.buf, buffer.size);
     }
     Buffer &operator=(const Buffer &buffer) {
         this->buf = (uint8_t *)malloc(buffer.size);
         this->size = buffer.size;
-        memccpy(this->buf, buffer.buf, buffer.size, 1);
+        memcpy(this->buf, buffer.buf, buffer.size);
         return *this;
     }
     Buffer(Buffer &&buffer) {
@@ -69,6 +69,8 @@ struct Buffer {
         if (buf) free(buf);
     }
 };
+using NaluBuffer = Buffer<uint32_t>;
+
 
 struct AVCDecoderConfigurationRecord {
 
@@ -125,8 +127,6 @@ uint8_t *avc_find_startcode(uint8_t *p, uint8_t *end);
  * @param size the avc frame size.
  * @param nalus nal units splited from the avc frame.
  */
-
-using NaluBuffer = Buffer<uint32_t>;
 void split_nalus(uint8_t *buf, uint32_t size, std::vector<NaluBuffer> &nalus);
 /**
  * @brief Extract rbsb from nalu. Remove emulation_prevention_three_byte and nalu header.

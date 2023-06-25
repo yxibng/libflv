@@ -20,6 +20,10 @@ FlvMuxer::FlvMuxer( const char *filePath, bool hasAudio, bool hasVideo ) {
         // TODO: handle create file error
         return;
     }
+    
+    this->hasAudio = hasAudio;
+    this->hasVideo = hasVideo;
+    
     flv_header header = flv_header( hasAudio, hasVideo );
     uint8_t    buf[9] = { 0 };
     header.to_buf( buf );
@@ -31,6 +35,9 @@ FlvMuxer::FlvMuxer( const char *filePath, bool hasAudio, bool hasVideo ) {
 }
 
 void FlvMuxer::mux_aac( uint8_t *adts, size_t length, uint32_t timestamp ) {
+    
+    if (!this->hasAudio) return;
+
     const int adtsHeaderSize     = 7;
     const int flvTagHeaderSize   = 11;
     const int audioTagHeaderSize = 2;
@@ -97,6 +104,7 @@ void FlvMuxer::mux_aac( uint8_t *adts, size_t length, uint32_t timestamp ) {
 
 void FlvMuxer::mux_avc( uint8_t *buf, size_t length, uint32_t pts, uint32_t dts, bool isKeyFrame ) {
 
+    if (!this->hasVideo) return;
     /*
         1. seperate buf to nalus
         2. for each nalu, extract rbsp from nalu
@@ -125,7 +133,7 @@ void FlvMuxer::mux_avc( uint8_t *buf, size_t length, uint32_t pts, uint32_t dts,
             }
         }
         const uint32_t flv_tag_header_size = 11;
-        const uint32_t flv_avc_header_size = 2;
+        const uint32_t flv_avc_header_size = 5;
         if ( this->sps && this->pps ) {
 
             AVCDecoderConfigurationRecord avcDecoderConfigurationRecord = AVCDecoderConfigurationRecord(

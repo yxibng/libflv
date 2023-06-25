@@ -19,6 +19,7 @@ uint32_t GetBitContext::get_bit1() {
     return tmp;
 }
 uint32_t GetBitContext::get_bits(int n) {
+    if (n == 0) return 0;
     assert(n >= 1 && n <= 32);
     uint32_t ret = 0;
     for (int i = n - 1; i >= 0; i--) {

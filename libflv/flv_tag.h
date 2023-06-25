@@ -231,7 +231,7 @@ struct flv_avc_tag_header {
     }
 
     void to_buf( uint8_t buf[5] ) {
-        PutBitsContext context = PutBitsContext( buf, 2 );
+        PutBitsContext context = PutBitsContext( buf, 5 );
         context.put_bits( 4, frameType );
         context.put_bits( 4, codecID );
         context.put_bits( 8, avcPacketType );
