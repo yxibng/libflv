@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "aac.h"
+#include "amf.h"
 #include "flv_tag.h"
 
 using namespace nx;
@@ -36,6 +37,11 @@ FlvMuxer::FlvMuxer( const char *filePath, bool hasAudio, bool hasVideo ) {
     // write tag 0 size
     uint32_t tagSize = 0;
     fwrite( &tagSize, sizeof( tagSize ), 1, flvFile );
+
+    totalBytes += 13;
+
+    // write metadata
+    mux_metadata();
 }
 
 void FlvMuxer::mux_aac( uint8_t *adts, size_t length, uint32_t timestamp ) {
@@ -79,6 +85,13 @@ void FlvMuxer::mux_aac( uint8_t *adts, size_t length, uint32_t timestamp ) {
         // callback
         this->onMuxedData( flv_tag_header::TagType::audio, buf, buf_size, timestamp );
         free( buf );
+
+        // update metadata
+        {
+            adts_header header       = adts_header::parse_adts_header( adts );
+            metaData.audiosamplerate = adts_header::sampleRate( header );
+            metaData.stereo          = adts_header::channelCount( header ) == 2 ? 1 : 0;
+        }
     }
     else {
         // write aac raw
@@ -235,10 +248,75 @@ void FlvMuxer::mux_avc( uint8_t *buf, size_t length, uint32_t pts, uint32_t dts,
 }
 
 void FlvMuxer::onMuxedData( int type, const uint8_t *data, size_t bytes, uint32_t timestamp ) {
+
     size_t ret = fwrite( data, bytes, 1, flvFile );
     if ( ret < bytes ) {
         // handle write error
+        return;
     }
+
+    totalBytes += bytes;
+}
+
+void FlvMuxer::mux_metadata() {
+
+    AMF_BUFFER elems;
+    uint32_t   count = 0;
+    {
+        uint32_t videoDuration = lastVideoTimestamp - videoStartTimestamp;
+        uint32_t audioDuration = lastAudioTimestamp - audioStartTimestamp;
+        metaData.duration      = std::max( videoDuration, audioDuration ) / 60;
+        amf_put_named_double( "duration", metaData.duration, elems );
+        count += 1;
+    }
+    {
+        metaData.filesize = totalBytes;
+        amf_put_named_double( "filesize", metaData.filesize, elems );
+        count += 1;
+    }
+    if ( hasAudio ) {
+        amf_put_named_double( "audiocodecid", metaData.audiocodecid, elems );
+        amf_put_named_double( "audiosamplerate", metaData.audiosamplerate, elems );
+        amf_put_named_double( "stereo", metaData.stereo, elems );
+        amf_put_named_double( "audiodelay", metaData.audiodelay, elems );
+        count += 4;
+    }
+
+    if ( hasVideo ) {
+        amf_put_named_double( "videocodecid", metaData.videocodecid, elems );
+        count += 1;
+    }
+    AMF_BUFFER array;
+    {
+        amf_put_double( count, array );
+    }
+
+    AMF_BUFFER amf_buf;
+    {
+        amf_put_named_ecma_array( "onMetadata", count, elems, amf_buf );
+    }
+
+    // construct flv tag
+    const int      flv_tag_header_size = 11;
+    uint32_t       dataSize            = amf_buf.size();
+    uint32_t       TagSize             = flv_tag_header_size + dataSize;
+    flv_tag_header header              = flv_tag_header( flv_tag_header::TagType::script_data, dataSize, 0 );
+    uint32_t       buf_size            = TagSize + 4;
+    int            offset              = 0;
+    uint8_t       *buf                 = (uint8_t *)calloc( buf_size, 1 );
+    if ( !buf ) return;
+    header.to_buf( buf );
+    offset += flv_tag_header_size;
+    for ( uint8_t val : amf_buf ) {
+        *( buf + offset ) = val;
+        offset++;
+    }
+    //  write tag size, big endian
+    uint32_t size = htonl( TagSize );
+    memcpy( buf + offset, &size, 4 );
+    // callback
+    this->onMuxedData( flv_tag_header::TagType::script_data, buf, buf_size, 0 );
+    free( buf );
 }
 
 void FlvMuxer::endMuxing() {
