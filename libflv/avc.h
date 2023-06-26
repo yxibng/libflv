@@ -71,7 +71,47 @@ struct Buffer {
 };
 using NaluBuffer = Buffer<uint32_t>;
 
+/*
+ISO/IEC 14496-15:2010(E) 5.2.4.1.1 Syntax (p16)
 
+aligned(8) class AVCDecoderConfigurationRecord {
+    unsigned int(8) configurationVersion = 1;
+    unsigned int(8) AVCProfileIndication;
+    unsigned int(8) profile_compatibility;
+    unsigned int(8) AVCLevelIndication;
+    bit(6) reserved = '111111'b;
+    unsigned int(2) lengthSizeMinusOne;
+    bit(3) reserved = '111'b;
+
+    unsigned int(5) numOfSequenceParameterSets;
+    for (i=0; i< numOfSequenceParameterSets; i++) {
+        unsigned int(16) sequenceParameterSetLength ;
+        bit(8*sequenceParameterSetLength) sequenceParameterSetNALUnit;
+    }
+
+    unsigned int(8) numOfPictureParameterSets;
+    for (i=0; i< numOfPictureParameterSets; i++) {
+        unsigned int(16) pictureParameterSetLength;
+        bit(8*pictureParameterSetLength) pictureParameterSetNALUnit;
+    }
+
+    if( profile_idc == 100 || profile_idc == 110 ||
+        profile_idc == 122 || profile_idc == 144 )
+    {
+        bit(6) reserved = '111111'b;
+        unsigned int(2) chroma_format;
+        bit(5) reserved = '11111'b;
+        unsigned int(3) bit_depth_luma_minus8;
+        bit(5) reserved = '11111'b;
+        unsigned int(3) bit_depth_chroma_minus8;
+        unsigned int(8) numOfSequenceParameterSetExt;
+        for (i=0; i< numOfSequenceParameterSetExt; i++) {
+            unsigned int(16) sequenceParameterSetExtLength;
+            bit(8*sequenceParameterSetExtLength) sequenceParameterSetExtNALUnit;
+        }
+    }
+}
+*/
 struct AVCDecoderConfigurationRecord {
 
     // Annex-B to MP4, 00 00 00 01 to 4 bytes nalu length
