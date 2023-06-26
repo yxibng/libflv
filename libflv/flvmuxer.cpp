@@ -12,6 +12,7 @@ using namespace std;
 FlvMuxer::~FlvMuxer() {
     if ( sps ) delete sps;
     if ( pps ) delete pps;
+    endMuxing();
 }
 
 FlvMuxer::FlvMuxer( const char *filePath, bool hasAudio, bool hasVideo ) {
@@ -20,6 +21,9 @@ FlvMuxer::FlvMuxer( const char *filePath, bool hasAudio, bool hasVideo ) {
         // TODO: handle create file error
         return;
     }
+
+    assert( hasAudio || hasVideo );
+    if ( !hasAudio && !hasVideo ) return;
 
     this->hasAudio = hasAudio;
     this->hasVideo = hasVideo;
@@ -37,6 +41,10 @@ FlvMuxer::FlvMuxer( const char *filePath, bool hasAudio, bool hasVideo ) {
 void FlvMuxer::mux_aac( uint8_t *adts, size_t length, uint32_t timestamp ) {
 
     if ( !this->hasAudio ) return;
+
+    // update timestamp
+    if ( !this->audioStartTimestamp ) this->audioStartTimestamp = timestamp;
+    this->lastAudioTimestamp = timestamp;
 
     const int adtsHeaderSize     = 7;
     const int flvTagHeaderSize   = 11;
@@ -174,6 +182,9 @@ void FlvMuxer::mux_avc( uint8_t *buf, size_t length, uint32_t pts, uint32_t dts,
     }
 
     if ( !avcSequenceHeaderFlag ) return;
+    // update timestamp
+    if ( !this->videoStartTimestamp ) this->videoStartTimestamp = dts;
+    this->lastVideoTimestamp = dts;
 
     {
         // write nalu,annex-b to mp4
@@ -219,7 +230,6 @@ void FlvMuxer::mux_avc( uint8_t *buf, size_t length, uint32_t pts, uint32_t dts,
         memcpy( buf + offset, &size, 4 );
         // callback
         this->onMuxedData( flv_tag_header::TagType::video, buf, buf_size, dts );
-
         free( buf );
     }
 }
@@ -229,4 +239,39 @@ void FlvMuxer::onMuxedData( int type, const uint8_t *data, size_t bytes, uint32_
     if ( ret < bytes ) {
         // handle write error
     }
+}
+
+void FlvMuxer::endMuxing() {
+    if ( !flvFile ) return;
+
+    // write eos
+    if ( this->hasVideo ) {
+        const uint32_t     flv_tag_header_size = 11;
+        const uint32_t     flv_avc_header_size = 5;
+        const int          dataSize            = flv_avc_header_size;
+        const int          TagSize             = flv_tag_header_size + dataSize;
+        flv_avc_tag_header avcTagHeader        = flv_avc_tag_header( flv_avc_tag_header::FrameType::AVCKeyFrame, flv_avc_tag_header::AVCPacketType::AVCEndOfSequence, 0 );
+        flv_tag_header     tagHeader           = flv_tag_header( flv_tag_header::TagType::video, dataSize, this->lastVideoTimestamp );
+
+        const int buf_size = TagSize + 4;
+        uint8_t  *buf      = (uint8_t *)calloc( buf_size, 1 );
+        int       offset   = 0;
+        // tag header
+        tagHeader.to_buf( buf + offset );
+        offset += flv_tag_header_size;
+        // avc tag header
+        avcTagHeader.to_buf( buf + offset );
+        offset += flv_avc_header_size;
+        // write tag size, big endian
+        uint32_t size = htonl( TagSize );
+        memcpy( buf + offset, &size, 4 );
+        // callback
+        this->onMuxedData( flv_tag_header::TagType::video, buf, buf_size, 0 );
+        free( buf );
+    }
+    // update meta data
+
+    // close file
+    fclose( flvFile );
+    flvFile = nullptr;
 }
