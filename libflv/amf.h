@@ -47,10 +47,10 @@ void amf_put_named_object( const char *name, const AMF_BUFFER &obj, AMF_BUFFER &
  *
  * @param name ecma array name
  * @param length  ecma array length
- * @param content  ecma array content buf, without objce_end 009
+ * @param properties  ecma array properties buf, without objce_end 009
  * @param buf dst buf, include objce_end 009
  */
-void amf_put_named_ecma_array( const char *name, uint32_t length, const AMF_BUFFER &content, AMF_BUFFER &buf );
+void amf_put_named_ecma_array( const char *name, uint32_t length, const AMF_BUFFER &properties, AMF_BUFFER &buf );
 
 };     // namespace nx
 

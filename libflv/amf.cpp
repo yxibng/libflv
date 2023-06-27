@@ -17,14 +17,11 @@ void amf_put_bool( bool value, AMF_BUFFER &buf ) {
     buf.push_back( val );
 }
 
-void amf_put_string( const char *str, AMF_BUFFER &buf ) {
-    // type
-    uint8_t type = strlen( str ) > UINT16_MAX ? AMFType::LongString : AMFType::String;
-    buf.push_back( type );
+static void amf_put_string_without_type( const char *str, AMF_BUFFER &buf ) {
     // StringData length in bytes.
     if ( strlen( str ) > UINT16_MAX ) {
         // long string, length is UI32, big endian
-        uint32_t length = strlen( str );
+        uint32_t length = (uint32_t)strlen( str );
         uint8_t *p      = (uint8_t *)&length;
         for ( int i = 0; i < 4; i++ ) {
             buf.push_back( p[4 - i - 1] );
@@ -32,7 +29,7 @@ void amf_put_string( const char *str, AMF_BUFFER &buf ) {
     }
     else {
         // short string, length is UI16, big endian
-        uint16_t length = strlen( str );
+        uint16_t length = (uint16_t)strlen( str );
         uint8_t *p      = (uint8_t *)&length;
         for ( int i = 0; i < 2; i++ ) {
             buf.push_back( p[2 - i - 1] );
@@ -44,6 +41,14 @@ void amf_put_string( const char *str, AMF_BUFFER &buf ) {
         buf.push_back( *( p + i ) );
     }
 }
+
+void amf_put_string( const char *str, AMF_BUFFER &buf ) {
+    // type
+    uint8_t type = strlen( str ) > UINT16_MAX ? AMFType::LongString : AMFType::String;
+    buf.push_back( type );
+    amf_put_string_without_type( str, buf );
+}
+
 void amf_put_obj_end( AMF_BUFFER &buf ) {
     // 0, 0, 9
     buf.push_back( 0 );
@@ -52,32 +57,39 @@ void amf_put_obj_end( AMF_BUFFER &buf ) {
 }
 
 void amf_put_named_double( const char *name, double value, AMF_BUFFER &buf ) {
-    amf_put_string( name, buf );
+    amf_put_string_without_type( name, buf );
     amf_put_double( value, buf );
 }
 void amf_put_named_bool( const char *name, bool value, AMF_BUFFER &buf ) {
-    amf_put_string( name, buf );
+    amf_put_string_without_type( name, buf );
     amf_put_bool( value, buf );
 }
 void amf_put_named_string( const char *name, const char *value, AMF_BUFFER &buf ) {
-    amf_put_string( name, buf );
+    amf_put_string_without_type( name, buf );
     amf_put_string( value, buf );
 }
 
 void amf_put_named_object( const char *name, const AMF_BUFFER &obj, AMF_BUFFER &buf ) {
-    amf_put_string( name, buf );
+    amf_put_string_without_type( name, buf );
+    // type
+    uint8_t type = AMFType::Object;
+    buf.push_back( type );
+
     buf.insert( buf.end(), obj.begin(), obj.end() );
 }
-void amf_put_named_ecma_array( const char *name, uint32_t length, const AMF_BUFFER &content, AMF_BUFFER &buf ) {
+void amf_put_named_ecma_array( const char *name, uint32_t length, const AMF_BUFFER &properties, AMF_BUFFER &buf ) {
     // name
     amf_put_string( name, buf );
+    // type
+    uint8_t type = AMFType::ECMAArray;
+    buf.push_back( type );
     // big endian length
     uint8_t *p = (uint8_t *)&length;
     for ( int i = 0; i < 4; i++ ) {
         buf.push_back( p[4 - i - 1] );
     }
     // content
-    buf.insert( buf.end(), content.begin(), content.end() );
+    buf.insert( buf.end(), properties.begin(), properties.end() );
     // obj end
     amf_put_obj_end( buf );
 }

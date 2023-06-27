@@ -5,6 +5,10 @@
 namespace nx {
 
 struct FlvMetaData {
+
+    bool hasAudio = false;
+    bool hasVideo = false;
+
     // Total duration of the file in seconds
     double duration;
     // Total size of the file in bytes
