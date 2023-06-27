@@ -3,6 +3,39 @@
 #include <memory>
 
 namespace nx {
+
+static void scaling_list( GetBitContext &context, unsigned *scalingList, size_t sizeOfScalingList, bool *useDefaultScalingMatrixFlag ) {
+    unsigned lastScale = 8;
+    unsigned nextScale = 8;
+    for ( int j = 0; j < sizeOfScalingList; j++ ) {
+        if ( nextScale != 0 ) {
+            int32_t delta_scale          = context.get_se_golomb();
+            nextScale                    = ( lastScale + delta_scale + 256 ) % 256;
+            *useDefaultScalingMatrixFlag = ( j == 0 && nextScale == 0 );
+        }
+
+        scalingList[j] = ( nextScale == 0 ) ? lastScale : nextScale;
+        lastScale      = scalingList[j];
+    }
+}
+
+static void decode_scaling_matrix( GetBitContext &context, uint32_t chroma_format_idc ) {
+    unsigned scalinglist4x4[16];
+    unsigned scalinglist8x8[64];
+    bool     usedefaultscalingmatrix[12];
+    for ( int i = 0; i < ( ( chroma_format_idc != 3 ) ? 8 : 12 ); i++ ) {
+        uint8_t seq_scaling_list_present_flag = context.get_bit1();
+        if ( seq_scaling_list_present_flag ) {
+            if ( i < 6 ) {
+                scaling_list( context, scalinglist4x4, 16, &usedefaultscalingmatrix[i] );
+            }
+            else {
+                scaling_list( context, scalinglist4x4, 64, &usedefaultscalingmatrix[i] );
+            }
+        }
+    }
+}
+
 AVCDecoderConfigurationRecord::AVCDecoderConfigurationRecord( uint8_t *spsNalu, uint16_t spsLength,
                                                               uint8_t *ppsNalu, uint16_t ppsLength ) {
 
@@ -210,12 +243,57 @@ int avc_decode_sps( H264SPS *sps, const uint8_t *sps_nalu, uint32_t sps_nalu_siz
         }
         sps->bit_depth_luma_minus8   = bitContext.get_ue_golomb();
         sps->bit_depth_chroma_minus8 = bitContext.get_ue_golomb();
+
+        uint8_t qpprime_y_zero_transform_bypass_flag = bitContext.get_bit1();
+        uint8_t seq_scaling_matrix_present_flag      = bitContext.get_bit1();
+        if ( seq_scaling_matrix_present_flag ) {
+            decode_scaling_matrix( bitContext, sps->chroma_format_idc );
+        }
     }
     else {
         sps->chroma_format_idc       = 1;
         sps->bit_depth_luma_minus8   = 0;
         sps->bit_depth_chroma_minus8 = 0;
     }
+
+    uint32_t log2_max_frame_num_minus4 = bitContext.get_ue_golomb();
+    uint32_t pic_order_cnt_type        = bitContext.get_ue_golomb();
+    if ( pic_order_cnt_type == 0 ) {
+        uint32_t log2_max_pic_order_cnt_lsb_minus4 = bitContext.get_ue_golomb();
+    }
+    else if ( pic_order_cnt_type == 1 ) {
+        uint8_t  delta_pic_order_always_zero_flag      = bitContext.get_bit1();
+        int32_t  offset_for_non_ref_pic                = bitContext.get_se_golomb();
+        int32_t  offset_for_top_to_bottom_field        = bitContext.get_se_golomb();
+        uint32_t num_ref_frames_in_pic_order_cnt_cycle = bitContext.get_ue_golomb();
+        for ( int i = 0; i < num_ref_frames_in_pic_order_cnt_cycle; i++ ) {
+            int32_t offset_for_ref_frame = bitContext.get_se_golomb();
+        }
+    }
+
+    uint32_t max_num_ref_frames                   = bitContext.get_ue_golomb();
+    uint8_t  gaps_in_frame_num_value_allowed_flag = bitContext.get_bit1();
+    {
+        uint32_t pic_width_in_mbs_minus1        = bitContext.get_ue_golomb();
+        uint32_t pic_height_in_map_units_minus1 = bitContext.get_ue_golomb();
+        sps->pic_width_in_mbs                   = pic_width_in_mbs_minus1 + 1;
+        sps->pic_height_in_map_units            = pic_height_in_map_units_minus1 + 1;
+    }
+
+    uint8_t frame_mbs_only_flag = bitContext.get_bit1();
+    if ( !frame_mbs_only_flag ) {
+        uint8_t mb_adaptive_frame_field_flag = bitContext.get_bit1();
+    }
+    uint8_t direct_8x8_inference_flag = bitContext.get_bit1();
+    uint8_t frame_cropping_flag       = bitContext.get_bit1();
+    if ( frame_cropping_flag ) {
+
+        sps->frame_crop_left_offset   = bitContext.get_ue_golomb();
+        sps->frame_crop_right_offset  = bitContext.get_ue_golomb();
+        sps->frame_crop_top_offset    = bitContext.get_ue_golomb();
+        sps->frame_crop_bottom_offset = bitContext.get_ue_golomb();
+    }
+
     free( rbsp );
     return 0;
 }

@@ -48,9 +48,9 @@ struct FlvMetaData {
     // Number of frames per second
     double framerate;
     // Width of the video in pixels
-    double width;
+    double width = 0;
     // Height of the video in pixels
-    double height;
+    double height = 0;
     // Video bit rate in kilobits per second
     double videodatarate;
 };

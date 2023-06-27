@@ -41,7 +41,9 @@ static vector<uint8_t> metadata_to_buf( FlvMetaData &metaData ) {
 
     if ( metaData.hasVideo ) {
         amf_put_named_double( "videocodecid", metaData.videocodecid, elems );
-        count += 1;
+        amf_put_named_double( "width", metaData.width, elems );
+        amf_put_named_double( "height", metaData.height, elems );
+        count += 3;
     }
 
     AMF_BUFFER amf_buf;
@@ -74,9 +76,9 @@ static vector<uint8_t> metadata_to_buf( FlvMetaData &metaData ) {
 }; // namespace nx
 
 FlvMuxer::~FlvMuxer() {
+    endMuxing();
     if ( sps ) delete sps;
     if ( pps ) delete pps;
-    endMuxing();
 }
 
 FlvMuxer::FlvMuxer( const char *filePath, bool hasAudio, bool hasVideo ) {
@@ -361,10 +363,21 @@ void FlvMuxer::endMuxing() {
     }
     // update meta data
     {
-        uint32_t videoDuration       = lastVideoTimestamp - videoStartTimestamp;
-        uint32_t audioDuration       = lastAudioTimestamp - audioStartTimestamp;
-        metaData.duration            = std::max( videoDuration, audioDuration ) / 1000;
-        metaData.filesize            = totalBytes;
+        {
+            uint32_t videoDuration = lastVideoTimestamp - videoStartTimestamp;
+            uint32_t audioDuration = lastAudioTimestamp - audioStartTimestamp;
+            metaData.duration      = ceil( std::max( videoDuration, audioDuration ) / 1000 );
+        }
+        metaData.filesize = totalBytes;
+        {
+            uint32_t width  = 0;
+            uint32_t height = 0;
+            H264SPS  sps;
+            avc_decode_sps( &sps, this->sps->buf, this->sps->size );
+            sps.get_resolution( width, height );
+            metaData.width  = width;
+            metaData.height = height;
+        }
         const long offsetOfScriptTag = 9 + 4;
         int        ret               = fseek( flvFile, offsetOfScriptTag, SEEK_SET );
         assert( ret == 0 );
