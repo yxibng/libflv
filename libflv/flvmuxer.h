@@ -55,6 +55,100 @@ struct FlvMetaData {
     double videodatarate;
 };
 
+struct FlvMuxerDataHandler {
+
+public:
+    void *context = nullptr;
+
+public:
+    /**
+     * @brief on muxed flv header
+     *
+     * @param context binded context
+     * @param data  the data pointer
+     * @param bytes  content size in bytes
+     */
+    virtual void onMuxedFlvHeader( void *context, uint8_t *data, size_t bytes ) = 0;
+    /**
+     * @brief mux data call back
+     *
+     * @param context  binded context
+     * @param type  8 - audio, 9 - video, 18 - script data
+     * @param data  buf pointer
+     * @param bytes  buf bytes
+     * @param timestamp  timestamp, audio is pts, video is dts
+     */
+    virtual void onMuxedData( void *context, int type, const uint8_t *data, size_t bytes, uint32_t timestamp ) = 0;
+
+    /**
+     * @brief update muxed data, only for meta data now.
+     *
+     * @param context binded context
+     * @param offsetFromStart  offset from the start
+     * @param data  the data pointer points to  the new content to be updated at the offset
+     * @param bytes new content size in bytes
+     */
+    virtual void onUpdateMuxedData( void *context, size_t offsetFromStart, const uint8_t *data, size_t bytes ) = 0;
+
+    virtual void onEndMuxing() = 0;
+};
+
+struct FlvFileWriter : public FlvMuxerDataHandler {
+
+private:
+    FILE *flvFile = nullptr;
+
+public:
+    ~FlvFileWriter() {
+        onEndMuxing();
+    }
+    FlvFileWriter( const char *filePath, void *context ) {
+        flvFile = fopen( filePath, "wb" );
+        if ( !flvFile ) return;
+        this->context = context;
+    }
+
+    virtual void onMuxedFlvHeader( void *context, uint8_t *data, size_t bytes ) override {
+        if ( !flvFile ) return;
+        size_t bytes_write = fwrite( data, 1, bytes, flvFile );
+        if ( bytes != bytes_write ) {
+            // handle write error
+            onEndMuxing();
+        }
+    }
+    virtual void onMuxedData( void *context, int type, const uint8_t *data, size_t bytes, uint32_t timestamp ) override {
+        if ( !flvFile ) return;
+        size_t bytes_write = fwrite( data, 1, bytes, flvFile );
+        if ( bytes != bytes_write ) {
+            // handle write error
+            onEndMuxing();
+        }
+    }
+
+    virtual void onUpdateMuxedData( void *context, size_t offsetFromStart, const uint8_t *data, size_t bytes ) override {
+        if ( !flvFile ) return;
+        int ret = fseek( flvFile, offsetFromStart, SEEK_SET );
+        if ( ret != 0 ) {
+            // handle seek failed
+            onEndMuxing();
+            return;
+        }
+        size_t bytes_write = fwrite( data, 1, bytes, flvFile );
+        if ( bytes != bytes_write ) {
+            // handle write error
+            onEndMuxing();
+            return;
+        }
+        // back to file end
+        fseek( flvFile, 0, SEEK_END );
+    }
+    virtual void onEndMuxing() override {
+        if ( !flvFile ) return;
+        fclose( flvFile );
+        flvFile = nullptr;
+    }
+};
+
 class FlvMuxer {
 private:
     FlvMetaData metaData;
@@ -69,8 +163,6 @@ private:
     uint32_t lastVideoTimestamp  = 0;
 
     int64_t totalBytes = 0;
-
-    FILE *flvFile = nullptr;
 
     bool aacSequenceHeaderFlag = false;
     bool avcSequenceHeaderFlag = false;
@@ -87,14 +179,18 @@ private:
      */
     void onMuxedData( int type, const uint8_t *data, size_t bytes, uint32_t timestamp );
 
+    void onUpdateMuxedData( size_t offsetFromStart, const uint8_t *data, size_t bytes );
+
     void mux_metadata();
 
     void endMuxing();
 
+    std::weak_ptr<FlvMuxerDataHandler> dataHandler;
+
 public:
     ~FlvMuxer();
 
-    FlvMuxer( const char *filePath, bool hasAudio, bool hasVideo );
+    FlvMuxer( bool hasAudio, bool hasVideo, std::weak_ptr<FlvMuxerDataHandler> dataHandler );
     /**
      * @brief mux aac adts data
      *

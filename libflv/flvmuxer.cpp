@@ -81,12 +81,9 @@ FlvMuxer::~FlvMuxer() {
     if ( pps ) delete pps;
 }
 
-FlvMuxer::FlvMuxer( const char *filePath, bool hasAudio, bool hasVideo ) {
-    flvFile = fopen( filePath, "wb" );
-    if ( !flvFile ) {
-        // TODO: handle create file error
-        return;
-    }
+FlvMuxer::FlvMuxer( bool hasAudio, bool hasVideo, std::weak_ptr<FlvMuxerDataHandler> dataHandler ) {
+
+    this->dataHandler = std::move( dataHandler );
 
     assert( hasAudio || hasVideo );
     if ( !hasAudio && !hasVideo ) return;
@@ -97,16 +94,15 @@ FlvMuxer::FlvMuxer( const char *filePath, bool hasAudio, bool hasVideo ) {
     metaData.hasAudio = hasAudio;
     metaData.hasVideo = hasVideo;
 
-    flv_header header = flv_header( hasAudio, hasVideo );
-    uint8_t    buf[9] = { 0 };
+    const int  buf_size      = 13; // 9 bytes header + 4 bytes tag size 0
+    flv_header header        = flv_header( hasAudio, hasVideo );
+    uint8_t    buf[buf_size] = { 0 };
     header.to_buf( buf );
-    // write flv_header
-    fwrite( buf, sizeof( buf ), 1, flvFile );
-    // write tag 0 size
-    uint32_t tagSize = 0;
-    fwrite( &tagSize, sizeof( tagSize ), 1, flvFile );
-
-    totalBytes += 13;
+    // callback
+    if ( auto handler = this->dataHandler.lock() ) {
+        handler->onMuxedFlvHeader( handler->context, buf, buf_size );
+    }
+    totalBytes += buf_size;
 
     // write metadata
     mux_metadata();
@@ -316,15 +312,17 @@ void FlvMuxer::mux_avc( uint8_t *buf, size_t length, uint32_t pts, uint32_t dts,
 }
 
 void FlvMuxer::onMuxedData( int type, const uint8_t *data, size_t bytes, uint32_t timestamp ) {
-
-    size_t ret = fwrite( data, 1, bytes, flvFile );
-    assert( ret == bytes );
-    if ( ret < bytes ) {
-        // handle write error
-        return;
+    // callback
+    if ( auto handler = this->dataHandler.lock() ) {
+        handler->onMuxedData( handler->context, type, data, bytes, timestamp );
     }
-
     totalBytes += bytes;
+}
+
+void FlvMuxer::onUpdateMuxedData( size_t offsetFromStart, const uint8_t *data, size_t bytes ) {
+    if ( auto handler = this->dataHandler.lock() ) {
+        handler->onUpdateMuxedData( handler->context, offsetFromStart, data, bytes );
+    }
 }
 
 void FlvMuxer::mux_metadata() {
@@ -334,8 +332,6 @@ void FlvMuxer::mux_metadata() {
 }
 
 void FlvMuxer::endMuxing() {
-    if ( !flvFile ) return;
-
     // write eos
     if ( this->hasVideo ) {
         const uint32_t     flv_tag_header_size = 11;
@@ -379,13 +375,13 @@ void FlvMuxer::endMuxing() {
             metaData.height = height;
         }
         const long offsetOfScriptTag = 9 + 4;
-        int        ret               = fseek( flvFile, offsetOfScriptTag, SEEK_SET );
-        assert( ret == 0 );
-        vector<uint8_t> buf   = metadata_to_buf( metaData );
-        size_t          bytes = fwrite( &buf[0], 1, buf.size(), flvFile );
-        assert( bytes == buf.size() );
+
+        vector<uint8_t> buf = metadata_to_buf( metaData );
+        onUpdateMuxedData( offsetOfScriptTag, &buf[0], buf.size() );
     }
-    // close file
-    fclose( flvFile );
-    flvFile = nullptr;
+
+    // call back end muxing
+    if ( auto handler = this->dataHandler.lock() ) {
+        handler->onEndMuxing();
+    }
 }
