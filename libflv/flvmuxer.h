@@ -93,62 +93,6 @@ public:
     virtual void onEndMuxing() = 0;
 };
 
-struct FlvFileWriter : public FlvMuxerDataHandler {
-
-private:
-    FILE *flvFile = nullptr;
-
-public:
-    ~FlvFileWriter() {
-        onEndMuxing();
-    }
-    FlvFileWriter( const char *filePath, void *context ) {
-        flvFile = fopen( filePath, "wb" );
-        if ( !flvFile ) return;
-        this->context = context;
-    }
-
-    virtual void onMuxedFlvHeader( void *context, uint8_t *data, size_t bytes ) override {
-        if ( !flvFile ) return;
-        size_t bytes_write = fwrite( data, 1, bytes, flvFile );
-        if ( bytes != bytes_write ) {
-            // handle write error
-            onEndMuxing();
-        }
-    }
-    virtual void onMuxedData( void *context, int type, const uint8_t *data, size_t bytes, uint32_t timestamp ) override {
-        if ( !flvFile ) return;
-        size_t bytes_write = fwrite( data, 1, bytes, flvFile );
-        if ( bytes != bytes_write ) {
-            // handle write error
-            onEndMuxing();
-        }
-    }
-
-    virtual void onUpdateMuxedData( void *context, size_t offsetFromStart, const uint8_t *data, size_t bytes ) override {
-        if ( !flvFile ) return;
-        int ret = fseek( flvFile, offsetFromStart, SEEK_SET );
-        if ( ret != 0 ) {
-            // handle seek failed
-            onEndMuxing();
-            return;
-        }
-        size_t bytes_write = fwrite( data, 1, bytes, flvFile );
-        if ( bytes != bytes_write ) {
-            // handle write error
-            onEndMuxing();
-            return;
-        }
-        // back to file end
-        fseek( flvFile, 0, SEEK_END );
-    }
-    virtual void onEndMuxing() override {
-        if ( !flvFile ) return;
-        fclose( flvFile );
-        flvFile = nullptr;
-    }
-};
-
 class FlvMuxer {
 private:
     FlvMetaData metaData;

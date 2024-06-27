@@ -1,6 +1,7 @@
 
 #include "flvmuxer.h"
 #include <cassert>
+#include <cmath>
 #include <vector>
 
 #include "aac.h"
@@ -365,7 +366,7 @@ void FlvMuxer::endMuxing() {
             metaData.duration      = ceil( std::max( videoDuration, audioDuration ) / 1000 );
         }
         metaData.filesize = totalBytes;
-        {
+        if ( this->sps ) {
             uint32_t width  = 0;
             uint32_t height = 0;
             H264SPS  sps;
